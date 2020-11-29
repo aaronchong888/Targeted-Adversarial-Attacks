@@ -16,14 +16,7 @@ from tensorflow.keras.applications.resnet50 import preprocess_input
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import SparseCategoricalCrossentropy
 print('TensorFlow version: ', tf.__version__)
-'''
-# Set to force CPU
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-if tf.test.gpu_device_name():
-    print('GPU found')
-else:
-    print('No GPU found')
-'''
+
 def get_target_class_index(label):
     label = label.lower().replace('_', ' ')
     jsonPath = os.path.join(os.path.dirname(__file__), 'imagenet_index.json')
@@ -44,18 +37,15 @@ def clip_eps(tensor, eps):
 
 def generate_target_adversaries(model, base_image, delta, original_class_index, target_class_index, steps):
 	for step in range(0, steps):
-		# record our gradients
 		with tf.GradientTape() as tape:
-			# explicitly indicate that our perturbation vector should be tracked for gradient updates
 			tape.watch(delta)
             # add our perturbation vector to the base image and preprocess the resulting image
 			adversary = preprocess_input(baseImage + delta)
-			# run this newly constructed image tensor through our model and calculate the loss with respect to the both the *original* class label and the *target* class label
+			# run this newly constructed image through the model and calculate the loss below
 			predictions = model(adversary, training=False)
-            # computes the negative sparse categorical cross-entropy loss with respect to the original class label
-            # negative signs to minimize the probability for the *original* class
+            # compute the negative sparse categorical cross-entropy loss with respect to the *original* class index
 			originalLoss = -sccLoss(tf.convert_to_tensor([int(original_class_index)]), predictions)
-            # derives the positive categorical cross-entropy loss with respect to the target class label
+            # compute the positive sparse categorical cross-entropy loss with respect to the *target* class index
 			targetLoss = sccLoss(tf.convert_to_tensor([int(target_class_index)]), predictions)
 			totalLoss = originalLoss + targetLoss
 			# display the loss every 10 steps
@@ -105,7 +95,7 @@ if __name__ == '__main__':
     print('Original Class Index: ', original_index)
 
     # define the epsilon, learning rate and step number values
-    epsilon = 0.01 # 2 / 255.0
+    epsilon = 0.01
     learning_rate = 0.01
     num_of_steps = 300
 
